@@ -1,0 +1,59 @@
+# .github/workflows/financial-sync.yml
+# Automated financial data sync — runs every 2 hours
+# Secrets are stored in GitHub Actions, never in code
+
+name: Financial Data Sync
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # Every 2 hours
+  workflow_dispatch:          # Manual trigger for debugging
+
+jobs:
+  sync-financial-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run financial data sync
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_URL }}
+          DATABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_TOKEN_JSON }}
+        run: python sync_engine.py
+
+  sync-hr-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # HR sync runs once daily at 06:00 UTC
+    if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run HR sync
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_URL }}
+          DATABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_TOKEN_JSON }}
+        run: python hr_sync.py
